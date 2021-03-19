@@ -29,6 +29,8 @@ namespace Launcher
 {
 	public partial class MainWindow : Window
 	{
+		private long isQuitting = 0;
+
 		private bool cancel2;
 
 		private string archive;
@@ -59,7 +61,7 @@ namespace Launcher
 
 		private bool pressed;
 
-		private Thread watcherThread;
+		private Task watcherTask;
 
 		private Task runtimeBrokerManagerTask;
 
@@ -171,10 +173,10 @@ namespace Launcher
 		{
 			set
 			{
-				System.Windows.Application.Current.Dispatcher.Invoke(() => {
-					this.home_log.AppendText(string.Concat("\n", value));
-					this.home_log.ScrollToEnd();
-					this.home_log.UpdateLayout();
+				home_log?.Dispatcher.Invoke(() => {
+					home_log.AppendText(string.Concat("\n", value));
+					home_log.ScrollToEnd();
+					home_log.UpdateLayout();
 				});
 			}
 		}
@@ -594,8 +596,6 @@ namespace Launcher
 			return flag;
 		}
 
-		// FixMe: Process Explorer has a way to identify which package a RuntimeBroker is attached to.
-		// We should implement this to guarantee the client's system instability.
 		public async Task KillRuntimeBroker(CancellationToken? token = null)
 		{
 			await Task.Run(() => {
@@ -632,11 +632,17 @@ namespace Launcher
 						return;
 					}
 
-					for (int i = 0; i < 128; ++i)
+					int dead = 0;
+
+					// We should only kill 3 brokers:
+					// One when the app launches
+					// One when the app freezes (it seems to be verifying license?
+					// And one more extra time, just in case.
+					// Attempting to make a background task to kill as much as possible makes Minecraft unstable.
+					while (dead < 3)
 					{
 						if (token?.IsCancellationRequested == true)
 						{
-							MainLogger = "RuntimeBroker killer stopped.";
 							return;
 						}
 
@@ -655,7 +661,8 @@ namespace Launcher
                                 {
 									MainLogger = $"Failed to kill the broker with PID {kvp.Item1.Id}, from package {kvp.Item2}. The game might not load correctly.";
                                 }
-                            }
+								++dead;
+							}
 						}
 
 						Thread.Sleep(1000);
@@ -682,37 +689,7 @@ namespace Launcher
 					runtimeBrokerManagerTask = null;
 					runtimeBrokerManagerTaskCancelSource.Dispose();
 					runtimeBrokerManagerTaskCancelSource = null;
-                }
-			});
-		}
-
-		public async Task killer1()
-		{
-			await Task.Run(() => {
-				int i;
-				try
-				{
-					Process[] processesByName = Process.GetProcessesByName("RuntimeBroker");
-					for (i = 0; i < (int)processesByName.Length; i++)
-					{
-						processesByName[i].Kill();
-					}
-				}
-				catch (Exception exception1)
-				{
-					Exception exception = exception1;
-					string[] message = new string[] { exception.Message, "\nThe error code is ", null, null, null };
-					i = exception.HResult;
-					message[2] = i.ToString();
-					message[3] = "\nThe source is ";
-					message[4] = exception.Source;
-					this.MainLogger = string.Concat(message);
-					string[] str = new string[] { exception.Message, "\nThe error code is ", null, null, null };
-					i = exception.HResult;
-					str[2] = i.ToString();
-					str[3] = "\nThe source is ";
-					str[4] = exception.Source;
-					this.lastError = string.Concat(str);
+					MainLogger = "RuntimeBroker killer stopped.";
 				}
 			});
 		}
@@ -859,11 +836,6 @@ namespace Launcher
 					await this.timer(strArrays1);
 					return;
 				}
-				else if (str1 == ".repeater")
-				{
-					await this.repeatz(strArrays1);
-					return;
-				}
 				else
 				{
 					if (str1 != ".help")
@@ -958,56 +930,6 @@ namespace Launcher
 					this.lastError = string.Concat(str);
 				}
 			});
-		}
-
-		private async void repeater()
-		{
-			int num = 0;
-			while (!this.stop)
-			{
-				if (this.customed != 0)
-				{
-					await this.wait1(this.customed);
-				}
-				else
-				{
-					num++;
-					this.runcount = num;
-					await this.wait1(this.runcount);
-				}
-				await this.killer1();
-			}
-		}
-
-		private async Task repeatz(string[] args)
-		{
-			MainWindow thread = this;
-			thread.MainLogger = "--------------------------------------------------------------------------------";
-			if ((int)args.Length != 3 || !args.Contains<string>("="))
-			{
-				thread.MainLogger = "The command entered is invalid or format is not correct. Type \".help\" to get list of available commands";
-			}
-			else if (args[1] != "=" || args[2] != "on" && args[2] != "off")
-			{
-				thread.MainLogger = "The command entered is invalid or format is not correct. Type \".help\" to get list of available commands";
-			}
-			else if (args[2] != "on")
-			{
-				thread.stop = true;
-				thread.MainLogger = "Repeater stopped";
-				thread.ga = null;
-			}
-			else if (thread.stop || thread.ga == null)
-			{
-				thread.ga = new Thread(new ThreadStart(thread.repeater));
-				thread.stop = false;
-				thread.MainLogger = "Repeater started";
-				thread.ga.Start();
-			}
-			else
-			{
-				thread.MainLogger = "Already running";
-			}
 		}
 
 		public async Task service()
@@ -1229,25 +1151,18 @@ namespace Launcher
                     }
 					this.status_st = false;
 					this.MainLogger = "Minecraft launched. If you are stuck at loading with Minecraft logo, try to click on Unfreeze Minecraft";
-					watcherThread = new Thread(new ThreadStart(() =>
+					watcherTask = Task.Run(() =>
 					{
-						try
-                        {
 							while (MinecraftRunning)
 							{
-								Thread.Sleep(1000);
+								Thread.Sleep(100);
+								if (Interlocked.Read(ref isQuitting) == 1) return;
 							}
 							this.owner = false;
 							this.ActiveButtonMode = 6;
 							MainLogger = "Minecraft has stopped.";
 							manager_disable_Click(null, null);
-						}
-						catch (ThreadInterruptedException e)
-                        {
-							return;
-                        }
-					}));
-					watcherThread.Start();
+					});
 				}
 				catch (Exception exception1)
 				{
@@ -1354,13 +1269,14 @@ namespace Launcher
             {
 				return;
             }
+			if (runtimeBrokerManagerTaskCancelSource == null) runtimeBrokerManagerTaskCancelSource = new CancellationTokenSource();
 			runtimeBrokerManagerTask = KillRuntimeBroker(runtimeBrokerManagerTaskCancelSource.Token);
         }
 
 		private async void manager_disable_Click(object sender, RoutedEventArgs e)
 		{
 			manager_enable.Dispatcher.Invoke(() => manager_enable.IsEnabled = false);
-			runtimeBrokerManagerTaskCancelSource.Cancel();
+			runtimeBrokerManagerTaskCancelSource?.Cancel();
 			if (runtimeBrokerManagerTask != null) await runtimeBrokerManagerTask;
 			runtimeBrokerManagerTaskCancelSource?.Dispose();
 			runtimeBrokerManagerTaskCancelSource = new CancellationTokenSource();
@@ -1374,8 +1290,10 @@ namespace Launcher
 
         private void Window_Closing(object sender, CancelEventArgs e)
         {
+			Interlocked.Exchange(ref isQuitting, 1);
 			manager_disable_Click(null, null);
-			watcherThread?.Interrupt();
-        }
+			unregedit();
+			service1();
+		}
     }
 }
