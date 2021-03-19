@@ -5,7 +5,7 @@
     <ProjectGuid>{F7039516-1E64-4F4E-9568-45B576C6BF84}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <AssemblyName>Minecraft Bedrock Launcher for Windows 10</AssemblyName>
+    <AssemblyName>MinecraftBedrockLauncher</AssemblyName>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Launcher</RootNamespace>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
@@ -22,10 +22,15 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
+    <SupportUrl>https://github.com/trungnt2910/MinecraftLauncher</SupportUrl>
+    <ErrorReportUrl>https://github.com/trungnt2910/MinecraftLauncher/issues</ErrorReportUrl>
+    <ProductName>Minecraft Bedrock Launcher for Windows 10</ProductName>
+    <PublisherName>Trung Nguyen</PublisherName>
     <AutorunEnabled>true</AutorunEnabled>
     <ApplicationRevision>1</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationVersion>0.0.0.1</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
+    <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -94,7 +99,8 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>MinecraftBedrockLauncherKey.pfx</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="HtmlAgilityPack, Version=1.11.31.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
@@ -160,8 +166,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="MinecraftBedrockLauncherKey.pfx" />
-    <None Include="MinecraftBedrockLauncher_TemporaryKey.pfx" />
     <None Include="packages.config" />
     <None Include="Properties\app.manifest" />
     <None Include="Settings.settings">
