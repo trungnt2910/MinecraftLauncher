@@ -366,7 +366,7 @@ namespace Launcher
 			this.ActiveButtonMode = 2;
 			this.hack_disable.IsEnabled = false;
 			await this.unregedit();
-			await this.service1();
+			await this.StartClipSVC();
 			this.home_log.AppendText("\n The hack has been disabled. Restart might be required");
 			this.ActiveButtonMode = 200;
 		}
@@ -707,7 +707,7 @@ namespace Launcher
 		public async Task mode1(string[] files)
 		{
 			await this.unregedit();
-			await this.service1();
+			await this.StartClipSVC();
 			this.Maximum = 100;
 			this.install_mode = true;
 			string[] strArrays = files;
@@ -761,7 +761,7 @@ namespace Launcher
 		private async Task mode2(string install)
 		{
 			await this.unregedit();
-			await this.service1();
+			await this.StartClipSVC();
 			this.install_mode = true;
 			this.Maximum = 100;
 			this.progress_ = 0;
@@ -872,7 +872,7 @@ namespace Launcher
 				this.manager_enable.IsEnabled = true;
 				this.manager_disable.IsEnabled = true;
 				await this.regedit();
-				await this.service();
+				await this.StopClipSVC();
 				await this.LaunchMinecraft();
 				this.owner = true;
 				//while (this.waitneeded)
@@ -932,7 +932,7 @@ namespace Launcher
 			});
 		}
 
-		public async Task service()
+		public async Task StopClipSVC()
 		{
 			await Task.Run(() => {
 				ServiceController serviceController = new ServiceController("ClipSVC");
@@ -945,24 +945,12 @@ namespace Launcher
 				}
 				catch (Exception exception1)
 				{
-					Exception exception = exception1;
-					string[] message = new string[] { exception.Message, "\nThe error code is ", null, null, null };
-					int hResult = exception.HResult;
-					message[2] = hResult.ToString();
-					message[3] = "\nThe source is ";
-					message[4] = exception.Source;
-					this.MainLogger = string.Concat(message);
-					string[] str = new string[] { exception.Message, "\nThe error code is ", null, null, null };
-					hResult = exception.HResult;
-					str[2] = hResult.ToString();
-					str[3] = "\nThe source is ";
-					str[4] = exception.Source;
-					this.lastError = string.Concat(str);
+					MainLogger = exception1.ToString();
 				}
 			});
 		}
 
-		public async Task service1()
+		public async Task StartClipSVC()
 		{
 			await Task.Run(() => {
 				ServiceController serviceController = new ServiceController("ClipSVC");
@@ -1155,7 +1143,7 @@ namespace Launcher
 					{
 							while (MinecraftRunning)
 							{
-								Thread.Sleep(100);
+								StopClipSVC().Wait();
 								if (Interlocked.Read(ref isQuitting) == 1) return;
 							}
 							this.owner = false;
@@ -1293,7 +1281,7 @@ namespace Launcher
 			Interlocked.Exchange(ref isQuitting, 1);
 			manager_disable_Click(null, null);
 			unregedit();
-			service1();
+			StartClipSVC();
 		}
     }
 }
